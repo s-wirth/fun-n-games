@@ -6,7 +6,9 @@ const GameCanvas = () => {
   /* -------------- SETUP -------------- */
   const CANVAS_META = {
     width: 500,
-    height: 750
+    height: 750,
+    rows: 15,
+    columns: 5
   }
 
   const canvasRef = useRef(null);
@@ -27,6 +29,11 @@ const GameCanvas = () => {
   useEffect(() => {
     if (!canvas || !context) {
       return;
+    }
+    for (let i = 0; i < CANVAS_META.rows; i++) {
+      context.fillStyle = `rgba(0, ${255 * i / CANVAS_META.rows}, 0, 0.5)`;
+      context.fillRect(0, 50*i, CANVAS_META.width, 50)
+      
     }
     // Draw spout
     context.beginPath();
