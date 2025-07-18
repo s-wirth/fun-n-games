@@ -1,6 +1,6 @@
 "use client";
 import styles from "./gameCanvas.module.css";
-import React, { useRef, useEffect, useState, useMemo } from "react";
+import React, { useRef, useCallback, useEffect, useState } from "react";
 
 const CANVAS_META = {
   width: 500,
@@ -22,9 +22,18 @@ const GameCanvas = () => {
   const [gameRunningState, setGameRunningState] = useState(false);
 
   /* -------------- HELPERS -------------- */
-  /* ______________ functions _____________ */
 
-  function drawBall(ball) {
+  const drawFixedElements = useCallback(() => {
+    const { context, canvas } = gameCanvasState;
+    // Draw spout
+    context.beginPath();
+    context.arc(canvas.width / 2, 0, 10, 0, Math.PI * 2, true);
+    context.fillStyle = "black";
+    context.fill();
+    context.closePath();
+  }, [gameCanvasState]);
+
+  const drawBall = useCallback((ball) => {
     const { context } = gameCanvasState;
     const { x, y, radius, color } = ball;
     context.beginPath();
@@ -32,24 +41,19 @@ const GameCanvas = () => {
     context.fillStyle = color;
     context.fill();
     context.closePath();
-  }
-  function draw() {
+  }, [gameCanvasState]);
+
+  const draw = useCallback(() => {
     const { context } = gameCanvasState;
     context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
+    drawFixedElements();
     ballsState.forEach((ball) => {
-      drawBallCB(ball);
+      drawBall(ball);
     });
-  }
+  }, [ballsState, drawBall, drawFixedElements, gameCanvasState]);
 
-  function gameStart(gaC, ballsState) {
-    drawCB(gaC, ballsState);
-  }
-  function gameOver() {}
-  /* ______________ callbacks _____________ */
-
-  const drawCB = useCallback(draw, [ballsState, drawBallCB, gameCanvasState]);
-  const drawBallCB = useCallback(drawBall, [gameCanvasState]);
-  const gameStartCB = useCallback(gameStart, [drawCB]);
+  const gameStart = useCallback(() => draw(), [draw]);
+  const gameOver = useCallback(() => {}, []);
 
   /* ------------ USE EFFECT ------------- */
 
@@ -70,11 +74,11 @@ const GameCanvas = () => {
 
   useEffect(() => {
     if (gameRunningState) {
-      gameStartCB(gameCanvasState, ballsState);
+      gameStart(gameCanvasState, ballsState);
     } else {
       gameOver();
     }
-  }, [ballsState, gameCanvasState, gameRunningState, gameStartCB]);
+  }, [ballsState, gameCanvasState, gameRunningState, gameStart]);
 
   /* -------------- RENDER -------------- */
   return (
