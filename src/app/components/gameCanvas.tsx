@@ -23,6 +23,16 @@ const GameCanvas = () => {
 
   /* -------------- HELPERS -------------- */
 
+  const drawHelperRows = useCallback(() => {
+    const { context } = gameCanvasState;
+    for (let i = 0; i < CANVAS_META.rows; i++) {
+      context.fillStyle = `rgba(0, ${
+        (255 * (i + 1)) / CANVAS_META.rows
+      }, 0, 0.5)`;
+      context.fillRect(0, 50 * i, CANVAS_META.width, 50);
+    }
+  }, [gameCanvasState]);
+
   const drawFixedElements = useCallback(() => {
     const { context, canvas } = gameCanvasState;
     // Draw spout
@@ -34,6 +44,7 @@ const GameCanvas = () => {
   }, [gameCanvasState]);
 
   const drawBall = useCallback((ball) => {
+    // console.log('drawBall');
     const { context } = gameCanvasState;
     const { x, y, radius, color } = ball;
     context.beginPath();
@@ -44,19 +55,53 @@ const GameCanvas = () => {
   }, [gameCanvasState]);
 
   const draw = useCallback(() => {
+    // console.log('draw');
     const { context } = gameCanvasState;
     context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
+    drawHelperRows();
     drawFixedElements();
     ballsState.forEach((ball) => {
-      drawBall(ball);
-    });
-  }, [ballsState, drawBall, drawFixedElements, gameCanvasState]);
+        // ball.x cant be smaller than 0 or larger than canvas width
+        // ball.y cant be smaller than 0 or larger than canvas height
+        if (ball.x >= (CANVAS_META.width - ball.radius) || ball.x <= ball.radius) {
+          console.log('ball outside width, reversing vx')
+          ball.vx *= -1;
+        }
+        if (ball.y >= (CANVAS_META.height - ball.radius) || ball.y <= ball.radius) {
+          console.log('ball outside height, reversing vy')
+          ball.vy *= -1;
+        }
 
-  const gameStart = useCallback(() => draw(), [draw]);
-  const gameOver = useCallback(() => {}, []);
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+        // console.log('ball.x', ball.x)
+        // console.log('ball.y', ball.y)
+        drawBall(ball);
+    });
+      setGameCanvasState({ ...gameCanvasState, raf: requestAnimationFrame(draw) });
+  }, [gameCanvasState, drawHelperRows, drawFixedElements, ballsState, drawBall]);
+
+  const gameStart = useCallback(() => {
+    draw();
+  }, [draw]);
+
+  const gameOver = useCallback(() => {
+    console.log('gameOver');
+    const { raf } = gameCanvasState;
+    if (raf) {
+      cancelAnimationFrame(raf);
+      setGameCanvasState({ ...gameCanvasState, raf: null });
+    }
+  }, [gameCanvasState]);
 
   /* ------------ USE EFFECT ------------- */
 
+  useEffect(() => {
+    console.log('gameCanvasState', gameCanvasState)
+  
+
+  }, [gameCanvasState])
+  
   useEffect(() => {
     const canvas = canvasRef.current;
     setGameCanvasState({ canvasRef, canvas, context: canvas.getContext("2d") });
@@ -74,11 +119,14 @@ const GameCanvas = () => {
 
   useEffect(() => {
     if (gameRunningState) {
-      gameStart(gameCanvasState, ballsState);
+      gameStart();
     } else {
       gameOver();
     }
-  }, [ballsState, gameCanvasState, gameRunningState, gameStart]);
+  }, [gameRunningState]);
+
+  // console.log('gameRunningState', gameRunningState)
+  // console.log('gameCanvasState', gameCanvasState)
 
   /* -------------- RENDER -------------- */
   return (
