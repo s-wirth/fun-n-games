@@ -1,38 +1,62 @@
 "use client";
 import styles from "./gameCanvas.module.css";
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 
-function draw(context, ball) {
-  const { x, y, radius, color } = ball;
-  context.beginPath();
-  context.arc(x, y, radius, 0, Math.PI * 2, true);
-  context.fillStyle = color;
-  context.fill();
-  context.closePath();
-}
+const CANVAS_META = {
+  width: 500,
+  height: 750,
+  rows: 15,
+  columns: 5,
+};
 
 const GameCanvas = () => {
   /* -------------- SETUP -------------- */
-  const CANVAS_META = {
-    width: 500,
-    height: 750,
-    rows: 15,
-    columns: 5,
-  };
-
   const canvasRef = useRef(null);
-  const [canvas, setCanvas] = useState(null);
-  const [context, setContext] = useState(null);
-  const [balls, setBalls] = useState([]);
-  const [inMotion, setInMotion] = useState(false);
-  const [raf, setRaf] = useState(null);
+  const [gameCanvasState, setGameCanvasState] = useState({
+    canvasRef: canvasRef,
+    canvas: null,
+    context: null,
+    raf: null,
+  });
+  const [ballsState, setBallsState] = useState([]);
+  const [gameRunningState, setGameRunningState] = useState(false);
 
-  /* -------------- INIT -------------- */
+  /* -------------- HELPERS -------------- */
+  /* ______________ functions _____________ */
+
+  function drawBall(ball) {
+    const { context } = gameCanvasState;
+    const { x, y, radius, color } = ball;
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2, true);
+    context.fillStyle = color;
+    context.fill();
+    context.closePath();
+  }
+  function draw() {
+    const { context } = gameCanvasState;
+    context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
+    ballsState.forEach((ball) => {
+      drawBallCB(ball);
+    });
+  }
+
+  function gameStart(gaC, ballsState) {
+    drawCB(gaC, ballsState);
+  }
+  function gameOver() {}
+  /* ______________ callbacks _____________ */
+
+  const drawCB = useCallback(draw, [ballsState, drawBallCB, gameCanvasState]);
+  const drawBallCB = useCallback(drawBall, [gameCanvasState]);
+  const gameStartCB = useCallback(gameStart, [drawCB]);
+
+  /* ------------ USE EFFECT ------------- */
+
   useEffect(() => {
     const canvas = canvasRef.current;
-    setCanvas(canvas);
-    setContext(canvas.getContext("2d"));
-    setBalls([
+    setGameCanvasState({ canvasRef, canvas, context: canvas.getContext("2d") });
+    setBallsState([
       {
         x: CANVAS_META.width / 2,
         y: 20,
@@ -45,81 +69,27 @@ const GameCanvas = () => {
   }, []);
 
   useEffect(() => {
-    if (!canvas || !context) {
-      return;
+    if (gameRunningState) {
+      gameStartCB(gameCanvasState, ballsState);
+    } else {
+      gameOver();
     }
-
-    // Display rows
-    for (let i = 0; i < CANVAS_META.rows; i++) {
-      context.fillStyle = `rgba(0, ${
-        (255 * (i + 1)) / CANVAS_META.rows
-      }, 0, 0.5)`;
-      context.fillRect(0, 50 * i, CANVAS_META.width, 50);
-    }
-
-    // Draw spout
-    context.beginPath();
-    context.arc(canvas.width / 2, 0, 10, 0, Math.PI * 2, true);
-    context.fillStyle = "black";
-    context.fill();
-    context.closePath();
-
-    context.save();
-
-    // Draw ball
-    balls.forEach((ball) => {
-      draw(context, ball);
-    });
-  }, [balls, canvas, context]);
-
-  useEffect(() => { 
-    if (!inMotion) {
-      if (raf) {
-        window.cancelAnimationFrame(raf);
-      }
-      return
-    }
-    const animate = () => {
-      context.restore();
-      balls.forEach((ball) => {
-        const ballXBound = ball.x + ball.radius;
-        const ballYBound = ball.y + ball.radius;
-        // ball.x cant be smaller than 0 or larger than canvas width
-        // ball.y cant be smaller than 0 or larger than canvas height
-        if (ballXBound >= CANVAS_META.width || ballXBound <= 0) {
-          console.log('ball outside width, reversing vx')
-          ball.vx *= -1;
-        }
-        if (ballYBound >= CANVAS_META.height || ballYBound <= 0) {
-          console.log('ball outside height, reversing vy')
-          ball.vy *= -1;
-        }
-
-        ball.x += ball.vx;
-        ball.y += ball.vy;
-        console.log('ballXBound', ballXBound)
-        console.log('ballYBound', ballYBound)
-        draw(context, ball);
-      });
-      if (inMotion) {
-        setRaf(requestAnimationFrame(animate));
-      }
-    };
-    if (inMotion) {
-      setRaf(requestAnimationFrame(animate));
-    }
-  }, [inMotion]);
+  }, [ballsState, gameCanvasState, gameRunningState, gameStartCB]);
 
   /* -------------- RENDER -------------- */
   return (
-    <canvas
-      ref={canvasRef}
-      width={CANVAS_META.width}
-      height={CANVAS_META.height}
-      style={{ border: "1px solid black" }}
-      className={styles.canvas}
-      onClick={() => setInMotion(!inMotion)}
-    />
+    <div>
+      <button onClick={() => setGameRunningState(!gameRunningState)}>
+        {gameRunningState ? "Stop" : "Start"}
+      </button>
+      <canvas
+        ref={canvasRef}
+        width={CANVAS_META.width}
+        height={CANVAS_META.height}
+        style={{ border: "1px solid black" }}
+        className={styles.canvas}
+      />
+    </div>
   );
 };
 
