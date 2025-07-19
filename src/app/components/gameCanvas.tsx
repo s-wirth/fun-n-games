@@ -39,8 +39,11 @@ const GameCanvas = () => {
     context: null,
     raf: null,
   });
-  const [shotAngleState, setShotAngleState] = useState({x: 0, y: 0});
-  const [settingAngleState, setSettingAngleState] = useState(false);
+  const [shotAngleState, setShotAngleState] = useState({
+    beingSet: false,
+    angleTrajectory: { x: 0, y: 0 },
+    shotTrajectory: { x: 0, y: 0 },
+  });
   const [ballsState, setBallsState] = useState([]);
   const [obstaclesState, setObstaclesState] = useState([]);
   const [gameRunningState, setGameRunningState] = useState(false);
@@ -107,10 +110,11 @@ const GameCanvas = () => {
   );
 
   const drawAngleLine = useCallback(() => {
+    console.log("syp");
     const { context } = gameCanvasState;
     context.beginPath();
     context.moveTo(0, 0);
-    context.lineTo(shotAngleState.x, shotAngleState.y);
+    context.lineTo(100, 600);
     context.stroke();
   }, [gameCanvasState, shotAngleState]);
 
@@ -135,11 +139,15 @@ const GameCanvas = () => {
 
   const draw = useCallback(() => {
     const { context } = gameCanvasState;
+    const { beingSet } = shotAngleState;
     context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
     drawHelperRows();
     drawFixedElements();
     drawObstacles();
-    if (settingAngleState) drawAngleLine();
+    console.log("beingSet", beingSet);
+    if (shotAngleState.beingSet) {
+      drawAngleLine();
+    }
     ballsState.forEach((ball) => {
       collisionDetection(ball);
       calculateTrajectory(ball);
@@ -149,13 +157,24 @@ const GameCanvas = () => {
       ...gameCanvasState,
       raf: requestAnimationFrame(draw),
     });
-  }, [gameCanvasState, drawHelperRows, drawFixedElements, drawObstacles, settingAngleState, drawAngleLine, ballsState, collisionDetection, calculateTrajectory, drawBall]);
+  }, [
+    gameCanvasState,
+    drawHelperRows,
+    drawFixedElements,
+    drawObstacles,
+    shotAngleState,
+    ballsState,
+    drawAngleLine,
+    collisionDetection,
+    calculateTrajectory,
+    drawBall,
+  ]);
 
   const gameStart = useCallback(() => {
     draw();
   }, [draw]);
 
-  const gameOver = useCallback(() => {
+  const gameEnd = useCallback(() => {
     const { raf } = gameCanvasState;
     if (raf) {
       cancelAnimationFrame(raf);
@@ -180,36 +199,70 @@ const GameCanvas = () => {
     if (gameRunningState) {
       gameStart();
     } else {
-      gameOver();
+      gameEnd();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameRunningState]);
 
   /* -------------- CLICK LISTENER -------------- */
 
-  const handleMouseDown = useCallback((event) => {
-    setSettingAngleState(true);
+  const handleMouseDown = useCallback(
+    (event) => {
+      const { clientX, clientY } = event;
+      const { canvas } = gameCanvasState;
+      const { left, top } = canvas.getBoundingClientRect();
+      const x = clientX - left;
+      const y = clientY - top;
+      if (event.type === "mousedown") {
+        console.log("mousedown");
+        setShotAngleState({ ...shotAngleState, beingSet: true, angleTrajectory: { x, y } });
+      } else {
+        setShotAngleState({ ...shotAngleState, angleTrajectory: { x, y } });
+      }
+    },
+    [gameCanvasState, shotAngleState]
+  );
+
+  const handleMouseUp = useCallback(() => {
     const { clientX, clientY } = event;
     const { canvas } = gameCanvasState;
     const { left, top } = canvas.getBoundingClientRect();
     const x = clientX - left;
     const y = clientY - top;
-    setShotAngleState({ x, y });
 
-  }, [gameCanvasState]);
+    setShotAngleState({
+      beingSet: false,
+      angleTrajectory: { x: 0, y: 0 },
+      shotTrajectory: { x, y },
+    });
 
-  const handleMouseUp = useCallback(() => {
-    setSettingAngleState(false);
-    const newBallsState = ballsState.map((ball) => ({ ...ball, vx: ball.x - shotAngleState.x, vy: ball.y - shotAngleState.y }));
+    const newBallsState = ballsState.map((ball) => ({
+      ...ball,
+      vx: ball.x - x,
+      vy: ball.y - y,
+    }));
     setBallsState(newBallsState);
-  }, [ballsState, shotAngleState.x, shotAngleState.y]);
+  }, [ballsState, gameCanvasState]);
 
   /* -------------- RENDER -------------- */
+  // console.log("shotAngleState", shotAngleState);
   return (
     <div>
-      <button onClick={() => setGameRunningState(!gameRunningState)}>
-        {gameRunningState ? "Stop" : "Start"}
-      </button>
+      <div className={styles.misc}>
+        <div className={styles.angle}>
+            <p>
+              Angle: {shotAngleState.angleTrajectory.x}, {shotAngleState.angleTrajectory.y}
+              Trajectory: {shotAngleState.shotTrajectory.x}, {shotAngleState.shotTrajectory.y}
+            </p>
+          {shotAngleState.beingSet ? (<p>Being Set: True</p>
+          ) : (
+            <p>Being Set: False</p>
+          )}
+        </div>
+        <button onClick={() => setGameRunningState(!gameRunningState)}>
+          {gameRunningState ? "Stop" : "Start"}
+        </button>
+      </div>
       <canvas
         ref={canvasRef}
         width={CANVAS_META.width}
@@ -217,6 +270,7 @@ const GameCanvas = () => {
         style={{ border: "1px solid black" }}
         className={styles.canvas}
         onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseDown}
         onMouseUp={handleMouseUp}
       />
     </div>
