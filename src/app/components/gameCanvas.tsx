@@ -182,6 +182,7 @@ const GameCanvas = () => {
     } else {
       gameOver();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameRunningState]);
 
   // console.log('gameRunningState', gameRunningState)
