@@ -67,11 +67,11 @@ const GameCanvas = () => {
 
   const drawObstacles = useCallback(() => {
     const { context } = gameCanvasState;
-    
+
     obstaclesState.forEach((obstacle) => {
       context.fillStyle = obstacle.color;
       context.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-    })
+    });
   }, [gameCanvasState, obstaclesState]);
 
   const drawBall = useCallback(
@@ -145,6 +145,7 @@ const GameCanvas = () => {
     drawFixedElements,
     drawObstacles,
     ballsState,
+    collisionDetection,
     calculateTrajectory,
     drawBall,
   ]);
