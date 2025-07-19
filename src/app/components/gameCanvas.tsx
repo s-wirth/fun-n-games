@@ -43,16 +43,35 @@ const GameCanvas = () => {
     context.closePath();
   }, [gameCanvasState]);
 
-  const drawBall = useCallback((ball) => {
-    // console.log('drawBall');
-    const { context } = gameCanvasState;
-    const { x, y, radius, color } = ball;
-    context.beginPath();
-    context.arc(x, y, radius, 0, Math.PI * 2, true);
-    context.fillStyle = color;
-    context.fill();
-    context.closePath();
-  }, [gameCanvasState]);
+  const drawBall = useCallback(
+    (ball) => {
+      // console.log('drawBall');
+      const { context } = gameCanvasState;
+      const { x, y, radius, color } = ball;
+      context.beginPath();
+      context.arc(x, y, radius, 0, Math.PI * 2, true);
+      context.fillStyle = color;
+      context.fill();
+      context.closePath();
+    },
+    [gameCanvasState]
+  );
+
+  const calculateTrajectory = useCallback((ball) => {
+    // console.log('calculateTrajectory');
+    // ball.x cant be smaller than 0 or larger than canvas width
+    // ball.y cant be smaller than 0 or larger than canvas height
+    if (ball.x >= CANVAS_META.width - ball.radius || ball.x <= ball.radius) {
+      console.log("ball outside width, reversing vx");
+      ball.vx *= -1;
+    }
+    if (ball.y >= CANVAS_META.height - ball.radius || ball.y <= ball.radius) {
+      console.log("ball outside height, reversing vy");
+      ball.vy *= -1;
+    }
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+  }, []);
 
   const draw = useCallback(() => {
     // console.log('draw');
@@ -61,32 +80,28 @@ const GameCanvas = () => {
     drawHelperRows();
     drawFixedElements();
     ballsState.forEach((ball) => {
-        // ball.x cant be smaller than 0 or larger than canvas width
-        // ball.y cant be smaller than 0 or larger than canvas height
-        if (ball.x >= (CANVAS_META.width - ball.radius) || ball.x <= ball.radius) {
-          console.log('ball outside width, reversing vx')
-          ball.vx *= -1;
-        }
-        if (ball.y >= (CANVAS_META.height - ball.radius) || ball.y <= ball.radius) {
-          console.log('ball outside height, reversing vy')
-          ball.vy *= -1;
-        }
-
-        ball.x += ball.vx;
-        ball.y += ball.vy;
-        // console.log('ball.x', ball.x)
-        // console.log('ball.y', ball.y)
-        drawBall(ball);
+      calculateTrajectory(ball);
+      drawBall(ball);
     });
-      setGameCanvasState({ ...gameCanvasState, raf: requestAnimationFrame(draw) });
-  }, [gameCanvasState, drawHelperRows, drawFixedElements, ballsState, drawBall]);
+    setGameCanvasState({
+      ...gameCanvasState,
+      raf: requestAnimationFrame(draw),
+    });
+  }, [
+    gameCanvasState,
+    drawHelperRows,
+    drawFixedElements,
+    ballsState,
+    calculateTrajectory,
+    drawBall,
+  ]);
 
   const gameStart = useCallback(() => {
     draw();
   }, [draw]);
 
   const gameOver = useCallback(() => {
-    console.log('gameOver');
+    console.log("gameOver");
     const { raf } = gameCanvasState;
     if (raf) {
       cancelAnimationFrame(raf);
@@ -97,11 +112,9 @@ const GameCanvas = () => {
   /* ------------ USE EFFECT ------------- */
 
   useEffect(() => {
-    console.log('gameCanvasState', gameCanvasState)
-  
+    console.log("gameCanvasState", gameCanvasState);
+  }, [gameCanvasState]);
 
-  }, [gameCanvasState])
-  
   useEffect(() => {
     const canvas = canvasRef.current;
     setGameCanvasState({ canvasRef, canvas, context: canvas.getContext("2d") });
