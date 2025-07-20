@@ -1,75 +1,25 @@
 "use client";
-import styles from "./gameCanvas.module.css";
+import styles from "./canvas.module.css";
 import React, { useRef, useCallback, useEffect, useState } from "react";
-
-const CANVAS_META = {
-  width: 500,
-  height: 750,
-  rows: 15,
-  columns: 5,
-};
-
-const DEFAULT_BALL = {
-  x: CANVAS_META.width / 2,
-  y: 20,
-  radius: 10,
-  vx: 0,
-  vy: 0,
-  maxVy: 10,
-  bounceFactor: 0.5,
-  bounceStartX: 0,
-  bounceStartY: 0,
-  color: "blue",
-};
-
-const DEFAULT_SQUARE_OBST = {
-  x: 250,
-  y: CANVAS_META.height - 20,
-  width: 20,
-  height: 20,
-  color: "red",
-};
+import {
+  CANVAS_META,
+  DEFAULT_CANVAS_STATE,
+  DEFAULT_BALL,
+  DEFAULT_SQUARE_OBST,
+} from "./canvasMeta";
 
 const GameCanvas = () => {
   /* -------------- SETUP -------------- */
   const canvasRef = useRef(null);
   const [gameCanvasState, setGameCanvasState] = useState({
+    ...DEFAULT_CANVAS_STATE,
     canvasRef: canvasRef,
-    canvas: null,
-    context: null,
-    raf: null,
-  });
-  const [shotAngleState, setShotAngleState] = useState({
-    beingSet: false,
-    angleTrajectory: { x: 0, y: 0 },
-    shotTrajectory: { x: 0, y: 0 },
   });
   const [ballsState, setBallsState] = useState([]);
   const [obstaclesState, setObstaclesState] = useState([]);
   const [gameRunningState, setGameRunningState] = useState(false);
 
   /* -------------- HELPERS -------------- */
-
-  const drawHelperRows = useCallback(() => {
-    const { context } = gameCanvasState;
-    for (let i = 0; i < CANVAS_META.rows; i++) {
-      context.fillStyle = `rgba(0, ${
-        (255 * (i + 1)) / CANVAS_META.rows
-      }, 0, 0.5)`;
-      context.fillRect(0, 50 * i, CANVAS_META.width, 50);
-    }
-  }, [gameCanvasState]);
-
-  const drawFixedElements = useCallback(() => {
-    const { context, canvas } = gameCanvasState;
-    // Draw spout
-    context.beginPath();
-    context.arc(canvas.width / 2, 0, 10, 0, Math.PI * 2, true);
-    context.fillStyle = "black";
-    context.fill();
-    context.closePath();
-  }, [gameCanvasState]);
-
   const drawObstacles = useCallback(() => {
     const { context } = gameCanvasState;
 
@@ -109,15 +59,6 @@ const GameCanvas = () => {
     [obstaclesState]
   );
 
-  const drawAngleLine = useCallback(() => {
-    console.log("syp");
-    const { context } = gameCanvasState;
-    context.beginPath();
-    context.moveTo(0, 0);
-    context.lineTo(100, 600);
-    context.stroke();
-  }, [gameCanvasState, shotAngleState]);
-
   const calculateTrajectory = useCallback((ball) => {
     // ball.x cant be smaller than 0 or larger than canvas width
     if (ball.x >= CANVAS_META.width - ball.radius || ball.x <= ball.radius) {
@@ -139,15 +80,8 @@ const GameCanvas = () => {
 
   const draw = useCallback(() => {
     const { context } = gameCanvasState;
-    const { beingSet } = shotAngleState;
     context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
-    drawHelperRows();
-    drawFixedElements();
     drawObstacles();
-    console.log("beingSet", beingSet);
-    if (shotAngleState.beingSet) {
-      drawAngleLine();
-    }
     ballsState.forEach((ball) => {
       collisionDetection(ball);
       calculateTrajectory(ball);
@@ -157,18 +91,7 @@ const GameCanvas = () => {
       ...gameCanvasState,
       raf: requestAnimationFrame(draw),
     });
-  }, [
-    gameCanvasState,
-    drawHelperRows,
-    drawFixedElements,
-    drawObstacles,
-    shotAngleState,
-    ballsState,
-    drawAngleLine,
-    collisionDetection,
-    calculateTrajectory,
-    drawBall,
-  ]);
+  }, [gameCanvasState, drawObstacles, ballsState, collisionDetection, calculateTrajectory, drawBall]);
 
   const gameStart = useCallback(() => {
     draw();
@@ -183,11 +106,6 @@ const GameCanvas = () => {
   }, [gameCanvasState]);
 
   /* ------------ USE EFFECT ------------- */
-
-  useEffect(() => {
-    // console.log("gameCanvasState", gameCanvasState);
-  }, [gameCanvasState]);
-
   useEffect(() => {
     const canvas = canvasRef.current;
     setGameCanvasState({ canvasRef, canvas, context: canvas.getContext("2d") });
@@ -197,6 +115,7 @@ const GameCanvas = () => {
 
   useEffect(() => {
     if (gameRunningState) {
+      gameEnd();
       gameStart();
     } else {
       gameEnd();
@@ -204,76 +123,15 @@ const GameCanvas = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameRunningState]);
 
-  /* -------------- CLICK LISTENER -------------- */
-
-  const handleMouseDown = useCallback(
-    (event) => {
-      const { clientX, clientY } = event;
-      const { canvas } = gameCanvasState;
-      const { left, top } = canvas.getBoundingClientRect();
-      const x = clientX - left;
-      const y = clientY - top;
-      if (event.type === "mousedown") {
-        console.log("mousedown");
-        setShotAngleState({ ...shotAngleState, beingSet: true, angleTrajectory: { x, y } });
-      } else {
-        setShotAngleState({ ...shotAngleState, angleTrajectory: { x, y } });
-      }
-    },
-    [gameCanvasState, shotAngleState]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    const { clientX, clientY } = event;
-    const { canvas } = gameCanvasState;
-    const { left, top } = canvas.getBoundingClientRect();
-    const x = clientX - left;
-    const y = clientY - top;
-
-    setShotAngleState({
-      beingSet: false,
-      angleTrajectory: { x: 0, y: 0 },
-      shotTrajectory: { x, y },
-    });
-
-    const newBallsState = ballsState.map((ball) => ({
-      ...ball,
-      vx: ball.x - x,
-      vy: ball.y - y,
-    }));
-    setBallsState(newBallsState);
-  }, [ballsState, gameCanvasState]);
-
   /* -------------- RENDER -------------- */
-  // console.log("shotAngleState", shotAngleState);
   return (
-    <div>
-      <div className={styles.misc}>
-        <div className={styles.angle}>
-            <p>
-              Angle: {shotAngleState.angleTrajectory.x}, {shotAngleState.angleTrajectory.y}
-              Trajectory: {shotAngleState.shotTrajectory.x}, {shotAngleState.shotTrajectory.y}
-            </p>
-          {shotAngleState.beingSet ? (<p>Being Set: True</p>
-          ) : (
-            <p>Being Set: False</p>
-          )}
-        </div>
-        <button onClick={() => setGameRunningState(!gameRunningState)}>
-          {gameRunningState ? "Stop" : "Start"}
-        </button>
-      </div>
-      <canvas
-        ref={canvasRef}
-        width={CANVAS_META.width}
-        height={CANVAS_META.height}
-        style={{ border: "1px solid black" }}
-        className={styles.canvas}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseDown}
-        onMouseUp={handleMouseUp}
-      />
-    </div>
+    <canvas
+      ref={canvasRef}
+      width={CANVAS_META.width}
+      height={CANVAS_META.height}
+      style={{ border: "1px solid black" }}
+      className={styles.canvas}
+    />
   );
 };
 
