@@ -21,10 +21,27 @@ const ControlCanvas = ({
     (x, y) => {
       console.log("drawLine", controlCanvasState);
       const { context } = controlCanvasState;
+      const originX = 250; // center of canvas width
+      const originY = 0;
+
+      // Direction vector from origin to mouse
+      const dx = x - originX;
+      const dy = y - originY;
+
+      // Normalize and scale
+      const magnitude = Math.sqrt(dx * dx + dy * dy);
+      if (magnitude === 0) {
+        return;
+      } // avoid divide-by-zero
+
+      const scale = 2000; // arbitrarily large so it crosses canvas
+      const extendedX = originX + (dx / magnitude) * scale;
+      const extendedY = originY + (dy / magnitude) * scale;
+
       context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
       context.beginPath();
-      context.moveTo(250, 0);
-      context.lineTo(x, y);
+      context.moveTo(originX, originY);
+      context.lineTo(extendedX, extendedY);
       context.strokeStyle = "red";
       context.stroke();
       context.closePath();
@@ -108,6 +125,7 @@ const ControlCanvas = ({
     setUserActiveState(false);
     setTrajCoordsState(handleCoords(event));
     setAngleCoordsState({ x: 0, y: 0 });
+    cancelRaf();
   }
   function handleMouseLeave() {
     const { canvas } = controlCanvasState;
