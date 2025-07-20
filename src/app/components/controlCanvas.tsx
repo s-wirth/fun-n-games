@@ -18,31 +18,50 @@ const ControlCanvas = ({
 
   /* -------------- HELPERS -------------- */
   const drawLine = useCallback(
-    (x, y) => {
+    (mouseX, mouseY) => {
       console.log("drawLine", controlCanvasState);
       const { context } = controlCanvasState;
-      const originX = 250; // center of canvas width
-      const originY = 0;
+      const originX = 250; // Starting X
+      const originY = 0; // Starting Y
 
       // Direction vector from origin to mouse
-      const dx = x - originX;
-      const dy = y - originY;
+      const dx = mouseX - originX;
+      const dy = mouseY - originY;
 
-      // Normalize and scale
-      const magnitude = Math.sqrt(dx * dx + dy * dy);
-      if (magnitude === 0) {
+      // Avoid divide-by-zero
+      if (dx === 0 && dy === 0) {
         return;
-      } // avoid divide-by-zero
+      }
 
-      const scale = 2000; // arbitrarily large so it crosses canvas
-      const extendedX = originX + (dx / magnitude) * scale;
-      const extendedY = originY + (dy / magnitude) * scale;
+      // Determine which vertical wall we will hit first
+      const targetWallX = dx > 0 ? CANVAS_META.width : 0;
+      const t = (targetWallX - originX) / dx;
+      const wallY = originY + dy * t;
 
+      // Reflect horizontally for bounce
+      const reflectedDx = -dx;
+      const reflectedDy = dy;
+
+      // Extend bounce from wall
+      const bounceLength = 2000; // adjust as needed
+      const norm = Math.sqrt(reflectedDx ** 2 + reflectedDy ** 2);
+      const bounceX = targetWallX + (reflectedDx / norm) * bounceLength;
+      const bounceY = wallY + (reflectedDy / norm) * bounceLength;
+
+      // Draw initial path to wall
       context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
       context.beginPath();
       context.moveTo(originX, originY);
-      context.lineTo(extendedX, extendedY);
+      context.lineTo(targetWallX, wallY);
       context.strokeStyle = "red";
+      context.stroke();
+      context.closePath();
+
+      // Draw bounce path
+      context.beginPath();
+      context.moveTo(targetWallX, wallY);
+      context.lineTo(bounceX, bounceY);
+      context.strokeStyle = "orange";
       context.stroke();
       context.closePath();
     },
