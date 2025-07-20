@@ -9,6 +9,15 @@
   background: white;
 }
 
+.noControl {
+  pointer-events: none;
+}
+
+.control {
+  pointer-events: all;
+  cursor: pointer;
+}
+
 .misc {
   height: 100px;
   width: 100%;

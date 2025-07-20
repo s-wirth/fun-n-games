@@ -66,7 +66,7 @@ const BgCanvas = () => {
       width={CANVAS_META.width}
       height={CANVAS_META.height}
       style={{ border: "1px solid black" }}
-      className={`${styles.canvas} ${styles.bg}`}
+      className={`${styles.canvas} ${styles.noControl} ${styles.bg}`}
     />
   );
 };
