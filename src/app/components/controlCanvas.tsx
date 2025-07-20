@@ -1,15 +1,10 @@
 "use client";
 import styles from "./canvas.module.css";
 import React, { useRef, useCallback, useEffect, useState } from "react";
-import { CANVAS_META, DEFAULT_BALL, DEFAULT_SQUARE_OBST } from "./canvasMeta";
+import { CANVAS_META } from "./canvasMeta";
 
 const ControlCanvas = ({
-  props: {
-    angleCoordsState,
-    trajCoordsState,
-    setAngleCoordsState,
-    setTrajCoordsState,
-  },
+  props: { angleCoordsState, setAngleCoordsState, setTrajCoordsState },
 }) => {
   /* -------------- SETUP -------------- */
   const canvasRef = useRef(null);
@@ -17,36 +12,57 @@ const ControlCanvas = ({
     canvasRef: canvasRef,
     canvas: null,
     context: null,
-    raf: null,
   });
+  const [rafState, setRafState] = useState(null);
   const [userActiveState, setUserActiveState] = useState(false);
 
   /* -------------- HELPERS -------------- */
-  const drawLine = useCallback((x,y) => {
-    console.log('drawLine', controlCanvasState )
+  const drawLine = useCallback(
+    (x, y) => {
+      console.log("drawLine", controlCanvasState);
+      const { context } = controlCanvasState;
+      context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
+      context.beginPath();
+      context.moveTo(250, 0);
+      context.lineTo(x, y);
+      context.strokeStyle = "red";
+      context.stroke();
+      context.closePath();
+    },
+    [controlCanvasState]
+  );
+
+  const initRaf = useCallback(() => {
     const { context } = controlCanvasState;
-    context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
-    context.beginPath();
-    context.moveTo(250, 0);
-    context.lineTo(x, y);
-    context.strokeStyle = "red";
-    context.stroke();
-    context.closePath();
-  }, [controlCanvasState]);
-  
+    if (userActiveState && context) {
+      context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
+      const dL = () => drawLine(angleCoordsState.x, angleCoordsState.y);
+      const raf = requestAnimationFrame(dL);
+      setRafState(raf);
+    }
+  }, [
+    angleCoordsState.x,
+    angleCoordsState.y,
+    controlCanvasState,
+    drawLine,
+    userActiveState,
+  ]);
+
+  const cancelRaf = useCallback(() => {
+    const { context } = controlCanvasState;
+    if (rafState) {
+      context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
+      cancelAnimationFrame(rafState);
+      setRafState(null);
+    }
+  }, [rafState]);
 
   /* ------------ USE EFFECT ------------- */
   useEffect(() => {
     if (userActiveState) {
-      console.log("hi");
-      const dL = () => {
-        drawLine(angleCoordsState.x, angleCoordsState.y);
-      }
-      requestAnimationFrame(dL);
-    } else if (!userActiveState && controlCanvasState.raf) {
-      cancelAnimationFrame(controlCanvasState.raf);
+      initRaf();
     }
-  }, [controlCanvasState.raf, userActiveState, drawLine, angleCoordsState.x, angleCoordsState.y]);
+  }, [userActiveState, initRaf]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -93,6 +109,15 @@ const ControlCanvas = ({
     setTrajCoordsState(handleCoords(event));
     setAngleCoordsState({ x: 0, y: 0 });
   }
+  function handleMouseLeave() {
+    const { canvas } = controlCanvasState;
+    if (!canvas) {
+      return;
+    }
+    setUserActiveState(false);
+    setAngleCoordsState({ x: 0, y: 0 });
+    cancelRaf();
+  }
 
   /* -------------- RENDER -------------- */
   return (
@@ -105,6 +130,7 @@ const ControlCanvas = ({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseDrag}
       onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
     />
   );
 };

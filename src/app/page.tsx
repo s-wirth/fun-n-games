@@ -15,7 +15,7 @@ export default function Home() {
         <div className={styles.gameContainer}>
           <BgCanvas />
           <GameCanvas />
-          <ControlCanvas props={{ angleCoordsState, trajCoordsState, setAngleCoordsState, setTrajCoordsState }} />
+          <ControlCanvas props={{ angleCoordsState, setAngleCoordsState, setTrajCoordsState }} />
         </div>
       </main>
     </div>
