@@ -5,6 +5,10 @@
   left: 0;
 }
 
+.bg {
+  background: white;
+}
+
 .misc {
   height: 100px;
   width: 100%;
