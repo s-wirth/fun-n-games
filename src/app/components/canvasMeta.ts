@@ -17,11 +17,12 @@ const DEFAULT_BALL = {
   y: 20,
   radius: 10,
   vx: 0,
-  vy: 2,
+  vy: 5,
   maxVy: 10,
   bounceFactor: 0.5,
   bounceStartX: 0,
   bounceStartY: 0,
+  weight: 1,
   color: "blue",
 };
 
@@ -30,6 +31,7 @@ const DEFAULT_SQUARE_OBST = {
   y: CANVAS_META.height - 20,
   width: 20,
   height: 20,
+  health: 2,
   color: "red",
 };
 

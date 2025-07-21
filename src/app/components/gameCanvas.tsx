@@ -3,7 +3,6 @@ import styles from "./canvas.module.css";
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import { CANVAS_META, DEFAULT_BALL, DEFAULT_SQUARE_OBST } from "./canvasMeta";
 
-
 const GameCanvas = ({
   // props: { trajCoordsState, bounceInProgressState, setBounceInProgressState },
   props: { bounceInProgressState, setBounceInProgressState },
@@ -16,27 +15,25 @@ const GameCanvas = ({
     context: null,
   });
   const [rafState, setRafState] = useState(null);
-  const [ballsState, setBallsState] = useState([]);
-  const [obstaclesState, setObstaclesState] = useState([]);
-  /* -------------- HELPERS -------------- */
-  const cancelRaf = useCallback(() => {
-    const { context } = gameCanvasState;
-    if (rafState) {
-      context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
-      cancelAnimationFrame(rafState);
-      setRafState(null);
-    }
-  }, [gameCanvasState, rafState]);
+  const [endBounceState, setEndBounceState] = useState(false);
+  const animationFrameRef = useRef();
+  const ballsRef = useRef([]);
+  const obstaclesRef = useRef([]);
 
   /* ------------- OBSTACLES ------------- */
   const drawObstacles = useCallback(() => {
     const { context } = gameCanvasState;
 
-    obstaclesState.forEach((obstacle) => {
+    obstaclesRef.current.forEach((obstacle) => {
       context.fillStyle = obstacle.color;
       context.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+      const font = "bold 20px serif";
+      context.fillStyle = "black"; 
+      context.font = font;
+      context.fillText(obstacle.health, obstacle.x + 5, obstacle.y + obstacle.height - 2);
+
     });
-  }, [gameCanvasState, obstaclesState]);
+  }, [gameCanvasState]);
 
   /* ------------ BALL PHYSICS ------------ */
   const calculateTrajectory = useCallback((ball) => {
@@ -53,16 +50,14 @@ const GameCanvas = ({
     if (ball.y >= CANVAS_META.height - ball.radius) {
       ball.vx = 0;
       ball.vy = 0;
-      cancelRaf();
-      setBounceInProgressState(false);
     }
     ball.x += ball.vx;
     ball.y += ball.vy;
-  }, [cancelRaf, setBounceInProgressState]);
+  }, []);
 
   const collisionDetection = useCallback(
     (ball) => {
-      obstaclesState.forEach((obstacle) => {
+      obstaclesRef.current.forEach((obstacle) => {
         if (
           ball.x + ball.radius >= obstacle.x &&
           ball.x - ball.radius <= obstacle.x + obstacle.width &&
@@ -71,10 +66,14 @@ const GameCanvas = ({
         ) {
           ball.vx *= -1;
           ball.vy *= -1;
+          obstacle.health -= 1;
+          if (obstacle.health <= 0) {
+            obstaclesRef.current.splice(obstaclesRef.current.indexOf(obstacle), 1);
+          }
         }
       });
     },
-    [obstaclesState]
+    []
   );
 
   /* --------------- BALLS --------------- */
@@ -95,24 +94,36 @@ const GameCanvas = ({
     const { context } = gameCanvasState;
     context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
     drawObstacles();
-    ballsState.forEach((ball) => {
-      console.log('ball', ball)
+    ballsRef.current.forEach((ball) => {
       collisionDetection(ball);
       calculateTrajectory(ball);
       drawBall(ball);
     });
-  }, [gameCanvasState, drawObstacles, ballsState, collisionDetection, calculateTrajectory, drawBall]);
+    console.log("ballsRef", ballsRef);
+    animationFrameRef.current = requestAnimationFrame(drawBalls); // loop!
+  }, [
+    gameCanvasState,
+    drawObstacles,
+    collisionDetection,
+    calculateTrajectory,
+    drawBall,
+  ]);
 
   /* -------------- HELPERS -------------- */
-  const initRaf = useCallback(() => {
+  const cancelRaf = useCallback(() => {
     const { context } = gameCanvasState;
-    console.log('hi')
-    if (bounceInProgressState && context) {
+    if (rafState) {
       context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
-      const raf = requestAnimationFrame(drawBalls);
-      setRafState(raf);
+      cancelAnimationFrame(rafState);
+      setRafState(null);
     }
-  }, [drawBalls, gameCanvasState, bounceInProgressState]);
+  }, [gameCanvasState, rafState]);
+
+  const initRaf = useCallback(() => {
+    if (bounceInProgressState) {
+      animationFrameRef.current = requestAnimationFrame(drawBalls);
+    }
+  }, [bounceInProgressState, drawBalls]); // only things it truly depends on
 
   /* ------------ USE EFFECT ------------- */
 
@@ -120,8 +131,8 @@ const GameCanvas = ({
   useEffect(() => {
     const canvas = canvasRef.current;
     setGameCanvasState({ canvasRef, canvas, context: canvas.getContext("2d") });
-    setObstaclesState([{ ...DEFAULT_SQUARE_OBST }]);
-    setBallsState([{ ...DEFAULT_BALL }]);
+    obstaclesRef.current = [{ ...DEFAULT_SQUARE_OBST }];
+    ballsRef.current = [{ ...DEFAULT_BALL }];
   }, []);
 
   // Start animation loop
@@ -130,6 +141,15 @@ const GameCanvas = ({
       initRaf();
     }
   }, [bounceInProgressState, initRaf]);
+
+  useEffect(() => {
+    if (endBounceState) {
+      setBounceInProgressState(false);
+      setEndBounceState(false);
+      cancelRaf();
+    }
+    return () => cancelRaf(); // cleanup on unmount
+  }, [endBounceState, cancelRaf, setBounceInProgressState]);
 
   // console.log('bounceInProgressState', bounceInProgressState)
   /* -------------- RENDER -------------- */
