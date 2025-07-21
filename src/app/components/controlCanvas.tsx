@@ -19,7 +19,6 @@ const ControlCanvas = ({
   /* -------------- HELPERS -------------- */
   const drawLine = useCallback(
     (mouseX, mouseY) => {
-      console.log("drawLine", controlCanvasState);
       const { context } = controlCanvasState;
       const originX = 250; // Starting X
       const originY = 0; // Starting Y
@@ -36,7 +35,7 @@ const ControlCanvas = ({
       // Determine which vertical wall we will hit first
       const targetWallX = dx > 0 ? CANVAS_META.width : 0;
       const t = (targetWallX - originX) / dx;
-      const wallY = originY + dy * t;
+      const targetWallY = originY + dy * t;
 
       // Reflect horizontally for bounce
       const reflectedDx = -dx;
@@ -46,20 +45,20 @@ const ControlCanvas = ({
       const bounceLength = 2000; // adjust as needed
       const norm = Math.sqrt(reflectedDx ** 2 + reflectedDy ** 2);
       const bounceX = targetWallX + (reflectedDx / norm) * bounceLength;
-      const bounceY = wallY + (reflectedDy / norm) * bounceLength;
+      const bounceY = targetWallY + (reflectedDy / norm) * bounceLength;
 
       // Draw initial path to wall
       context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
       context.beginPath();
       context.moveTo(originX, originY);
-      context.lineTo(targetWallX, wallY);
+      context.lineTo(targetWallX, targetWallY);
       context.strokeStyle = "red";
       context.stroke();
       context.closePath();
 
       // Draw bounce path
       context.beginPath();
-      context.moveTo(targetWallX, wallY);
+      context.moveTo(targetWallX, targetWallY);
       context.lineTo(bounceX, bounceY);
       context.strokeStyle = "orange";
       context.stroke();
@@ -91,7 +90,7 @@ const ControlCanvas = ({
       cancelAnimationFrame(rafState);
       setRafState(null);
     }
-  }, [rafState]);
+  }, [controlCanvasState, rafState]);
 
   /* ------------ USE EFFECT ------------- */
   useEffect(() => {
