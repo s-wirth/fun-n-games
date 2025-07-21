@@ -4,7 +4,7 @@ import React, { useRef, useCallback, useEffect, useState } from "react";
 import { CANVAS_META } from "./canvasMeta";
 
 const ControlCanvas = ({
-  props: { angleCoordsState, setAngleCoordsState, setTrajCoordsState },
+  props: { angleCoordsState, setAngleCoordsState, setTrajCoordsState, bounceInProgressState, setBounceInProgressState },
 }) => {
   /* -------------- SETUP -------------- */
   const canvasRef = useRef(null);
@@ -135,6 +135,15 @@ const ControlCanvas = ({
     }
     setAngleCoordsState(handleCoords(event));
   }
+  function handleMouseLeave() {
+    const { canvas } = controlCanvasState;
+    if (!canvas) {
+      return;
+    }
+    setUserActiveState(false);
+    setAngleCoordsState({ x: 0, y: 0 });
+    cancelRaf();
+  }
   function handleMouseUp(event) {
     const { canvas } = controlCanvasState;
     if (!canvas) {
@@ -143,15 +152,7 @@ const ControlCanvas = ({
     setUserActiveState(false);
     setTrajCoordsState(handleCoords(event));
     setAngleCoordsState({ x: 0, y: 0 });
-    cancelRaf();
-  }
-  function handleMouseLeave() {
-    const { canvas } = controlCanvasState;
-    if (!canvas) {
-      return;
-    }
-    setUserActiveState(false);
-    setAngleCoordsState({ x: 0, y: 0 });
+    setBounceInProgressState(true);
     cancelRaf();
   }
 
@@ -162,11 +163,11 @@ const ControlCanvas = ({
       width={CANVAS_META.width}
       height={CANVAS_META.height}
       style={{ border: "1px solid black" }}
-      className={`${styles.canvas} ${styles.control}`}
+      className={`${styles.canvas} ${bounceInProgressState ? styles.noControl : styles.control}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseDrag}
-      onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onMouseUp={handleMouseUp}
     />
   );
 };

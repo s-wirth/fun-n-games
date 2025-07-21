@@ -1,25 +1,34 @@
 "use client";
 import styles from "./canvas.module.css";
 import React, { useRef, useCallback, useEffect, useState } from "react";
-import {
-  CANVAS_META,
-  DEFAULT_CANVAS_STATE,
-  DEFAULT_BALL,
-  DEFAULT_SQUARE_OBST,
-} from "./canvasMeta";
+import { CANVAS_META, DEFAULT_BALL, DEFAULT_SQUARE_OBST } from "./canvasMeta";
 
-const GameCanvas = () => {
+
+const GameCanvas = ({
+  // props: { trajCoordsState, bounceInProgressState, setBounceInProgressState },
+  props: { bounceInProgressState, setBounceInProgressState },
+}) => {
   /* -------------- SETUP -------------- */
   const canvasRef = useRef(null);
   const [gameCanvasState, setGameCanvasState] = useState({
-    ...DEFAULT_CANVAS_STATE,
     canvasRef: canvasRef,
+    canvas: null,
+    context: null,
   });
+  const [rafState, setRafState] = useState(null);
   const [ballsState, setBallsState] = useState([]);
   const [obstaclesState, setObstaclesState] = useState([]);
-  const [gameRunningState, setGameRunningState] = useState(false);
-
   /* -------------- HELPERS -------------- */
+  const cancelRaf = useCallback(() => {
+    const { context } = gameCanvasState;
+    if (rafState) {
+      context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
+      cancelAnimationFrame(rafState);
+      setRafState(null);
+    }
+  }, [gameCanvasState, rafState]);
+
+  /* ------------- OBSTACLES ------------- */
   const drawObstacles = useCallback(() => {
     const { context } = gameCanvasState;
 
@@ -29,18 +38,27 @@ const GameCanvas = () => {
     });
   }, [gameCanvasState, obstaclesState]);
 
-  const drawBall = useCallback(
-    (ball) => {
-      const { context } = gameCanvasState;
-      const { x, y, radius, color } = ball;
-      context.beginPath();
-      context.arc(x, y, radius, 0, Math.PI * 2, true);
-      context.fillStyle = color;
-      context.fill();
-      context.closePath();
-    },
-    [gameCanvasState]
-  );
+  /* ------------ BALL PHYSICS ------------ */
+  const calculateTrajectory = useCallback((ball) => {
+    // ball.x cant be smaller than 0 or larger than canvas width
+    if (ball.x >= CANVAS_META.width - ball.radius || ball.x <= ball.radius) {
+      console.log("ball outside width, reversing vx");
+      ball.vx *= -1;
+    }
+    // ball.y cant be smaller than 0
+    if (ball.y <= ball.radius) {
+      console.log("ball outside height, reversing vy");
+      ball.vy *= -1;
+    }
+    if (ball.y >= CANVAS_META.height - ball.radius) {
+      ball.vx = 0;
+      ball.vy = 0;
+      cancelRaf();
+      setBounceInProgressState(false);
+    }
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+  }, [cancelRaf, setBounceInProgressState]);
 
   const collisionDetection = useCallback(
     (ball) => {
@@ -59,53 +77,46 @@ const GameCanvas = () => {
     [obstaclesState]
   );
 
-  const calculateTrajectory = useCallback((ball) => {
-    // ball.x cant be smaller than 0 or larger than canvas width
-    if (ball.x >= CANVAS_META.width - ball.radius || ball.x <= ball.radius) {
-      console.log("ball outside width, reversing vx");
-      ball.vx *= -1;
-    }
-    // ball.y cant be smaller than 0
-    if (ball.y <= ball.radius) {
-      console.log("ball outside height, reversing vy");
-      ball.vy *= -1;
-    }
-    if (ball.y >= CANVAS_META.height - ball.radius) {
-      ball.vx = 0;
-      ball.vy = 0;
-    }
-    ball.x += ball.vx;
-    ball.y += ball.vy;
-  }, []);
+  /* --------------- BALLS --------------- */
+  const drawBall = useCallback(
+    (ball) => {
+      const { context } = gameCanvasState;
+      const { x, y, radius, color } = ball;
+      context.beginPath();
+      context.arc(x, y, radius, 0, Math.PI * 2, true);
+      context.fillStyle = color;
+      context.fill();
+      context.closePath();
+    },
+    [gameCanvasState]
+  );
 
-  const draw = useCallback(() => {
+  const drawBalls = useCallback(() => {
     const { context } = gameCanvasState;
     context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
     drawObstacles();
     ballsState.forEach((ball) => {
+      console.log('ball', ball)
       collisionDetection(ball);
       calculateTrajectory(ball);
       drawBall(ball);
     });
-    setGameCanvasState({
-      ...gameCanvasState,
-      raf: requestAnimationFrame(draw),
-    });
   }, [gameCanvasState, drawObstacles, ballsState, collisionDetection, calculateTrajectory, drawBall]);
 
-  const gameStart = useCallback(() => {
-    draw();
-  }, [draw]);
-
-  const gameEnd = useCallback(() => {
-    const { raf } = gameCanvasState;
-    if (raf) {
-      cancelAnimationFrame(raf);
-      setGameCanvasState({ ...gameCanvasState, raf: null });
+  /* -------------- HELPERS -------------- */
+  const initRaf = useCallback(() => {
+    const { context } = gameCanvasState;
+    console.log('hi')
+    if (bounceInProgressState && context) {
+      context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
+      const raf = requestAnimationFrame(drawBalls);
+      setRafState(raf);
     }
-  }, [gameCanvasState]);
+  }, [drawBalls, gameCanvasState, bounceInProgressState]);
 
   /* ------------ USE EFFECT ------------- */
+
+  // Set up canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     setGameCanvasState({ canvasRef, canvas, context: canvas.getContext("2d") });
@@ -113,16 +124,14 @@ const GameCanvas = () => {
     setBallsState([{ ...DEFAULT_BALL }]);
   }, []);
 
+  // Start animation loop
   useEffect(() => {
-    if (gameRunningState) {
-      gameEnd();
-      gameStart();
-    } else {
-      gameEnd();
+    if (bounceInProgressState) {
+      initRaf();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameRunningState]);
+  }, [bounceInProgressState, initRaf]);
 
+  // console.log('bounceInProgressState', bounceInProgressState)
   /* -------------- RENDER -------------- */
   return (
     <canvas

@@ -17,7 +17,7 @@ const DEFAULT_BALL = {
   y: 20,
   radius: 10,
   vx: 0,
-  vy: 0,
+  vy: 2,
   maxVy: 10,
   bounceFactor: 0.5,
   bounceStartX: 0,
