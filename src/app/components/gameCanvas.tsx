@@ -8,15 +8,13 @@ function randomNumber(from, to) {
 }
 
 function generateObstacles(canvas, obstacle) {
-  const {columns: canvasColumns} = CANVAS_META;
+  const {columns: canvasColumns, rows: canvasRows} = CANVAS_META;
   const{ width: canvasWidth, height: canvasHeight} = canvas
   const{ width: obstacleWidth, height: obstacleHeight} = obstacle
   const columnWidth = canvasWidth / canvasColumns;
 
   const numObstacles = randomNumber(1, canvasColumns);
   const obstacleColumns = [];
-
-  console.log('canvasWidth', canvasWidth, 'canvasHeight', canvasHeight, 'canvasColumns', canvasColumns)
 
   // Pick unique random column indices
   while (obstacleColumns.length < numObstacles) {
@@ -29,7 +27,7 @@ function generateObstacles(canvas, obstacle) {
   // Create obstacle objects spaced by columns
   const obs =  obstacleColumns.map((colIdx) => {
     const x = colIdx * columnWidth + (columnWidth - obstacleWidth) / 2; // center it
-    const y = canvasHeight - obstacleHeight - 10; // or any fixed vertical position
+    const y = canvasHeight - obstacleHeight - randomNumber(10, canvasHeight/canvasRows);
     return {
       x,
       y,
@@ -205,7 +203,6 @@ const GameCanvas = ({
   useEffect(() => {
     const { context } = gameCanvasState;
     if (context && obstaclesRef.current.length > 0) {
-      console.log(obstaclesRef.current)
       // Clear and draw obstacles once
       context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
       drawObstacles();
