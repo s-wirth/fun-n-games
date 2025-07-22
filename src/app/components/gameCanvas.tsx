@@ -1,45 +1,83 @@
 "use client";
 import styles from "./canvas.module.css";
 import React, { useRef, useCallback, useEffect, useState } from "react";
-import { CANVAS_META, DEFAULT_BALL, DEFAULT_SQUARE_OBST } from "./canvasMeta";
+import {
+  CANVAS_META,
+  DEFAULT_BALL,
+  DEFAULT_SQUARE_OBST,
+  DEFAULT_OBSTACLES,
+} from "./canvasMeta";
+
+const RANDOM_COLOR = () => {
+  const letters = "0123456789ABCDEF";
+  let color = "#";
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+};
 
 function randomNumber(from, to) {
   return Math.floor(Math.random() * (to - from + 1) + from);
 }
 
+function randomObstacle() {
+  const rO = randomNumber(0, DEFAULT_OBSTACLES.length - 1);
+  return { ...DEFAULT_OBSTACLES[rO] };
+}
+
 function generateObstacles(canvas, obstacle) {
-  const {columns: canvasColumns, rows: canvasRows} = CANVAS_META;
-  const{ width: canvasWidth, height: canvasHeight} = canvas
-  const{ width: obstacleWidth, height: obstacleHeight} = obstacle
+  const { columns: canvasColumns, rows: canvasRows } = CANVAS_META;
+  const { width: canvasWidth, height: canvasHeight } = canvas;
+  const { width: obstacleWidth, height: obstacleHeight } = obstacle;
   const columnWidth = canvasWidth / canvasColumns;
 
   const numObstacles = randomNumber(1, canvasColumns);
   const obstacleColumns = [];
+  const newObstacles = [];
 
+  // const obstAmount = randomNumber(0, canvasColumns);
+  // for (let i = 0; i < obstAmount; i++) {
+  //   obstacleColumns.push(randomObstacle());
+  // }
   // Pick unique random column indices
   while (obstacleColumns.length < numObstacles) {
-    const randCol = randomNumber(0, canvasColumns);
+    const randCol = randomNumber(0, canvasColumns - 1);
     if (!obstacleColumns.includes(randCol)) {
       obstacleColumns.push(randCol);
     }
   }
 
-  // Create obstacle objects spaced by columns
-  const obs =  obstacleColumns.map((colIdx) => {
-    const x = colIdx * columnWidth + (columnWidth - obstacleWidth) / 2; // center it
-    const y = canvasHeight - obstacleHeight - randomNumber(10, canvasHeight/canvasRows);
-    return {
+  obstacleColumns.forEach((randCol) => {
+    newObstacles.push({
+      randCol,
+      obst: randomObstacle(),
+    });
+  });
+  console.log("obstacleColumns", obstacleColumns);
+  console.log("newObstacles", newObstacles);
+
+  const obstacles = newObstacles.map((randObst) => {
+    const { obst } = randObst;
+    const oW = obst.shape === "round" ? obst.radius : obst.width;
+    const oH = obst.shape === "round" ? obst.radius * 2 : obst.height;
+    const x = randObst.randCol * columnWidth + (columnWidth - oW) / 2; // center it
+    console.log(
+      "x",
       x,
-      y,
-      width: obstacleWidth,
-      height: obstacleHeight,
-      health: 2,
-      color: "red", // or randomized
-    };
+      "randCol",
+      randObst.randCol,
+      "columnWidth",
+      columnWidth,
+      "oW",
+      oW
+    );
+    const y = canvasHeight - oH - randomNumber(10, canvasHeight / canvasRows);
+    return { ...obst, x, y, color: RANDOM_COLOR() };
   });
 
-  console.log('obs', obs)
-  return obs
+  console.log("obstacles", obstacles);
+  return obstacles;
 }
 
 const GameCanvas = ({
@@ -67,17 +105,39 @@ const GameCanvas = ({
     const { context } = gameCanvasState;
 
     obstaclesRef.current.forEach((obstacle) => {
+      const isRound = obstacle.shape === "round";
+      const fontSize = 26;
+
+      // Draw shape
       context.fillStyle = obstacle.color;
-      context.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-      const fontS = obstacle.height * 0.7;
-      const font = "bold " + fontS + "px serif";
+      if (isRound) {
+        const cx = obstacle.x + obstacle.radius;
+        const cy = obstacle.y + obstacle.radius;
+        context.beginPath();
+        context.arc(cx, cy, obstacle.radius, 0, Math.PI * 2);
+        context.fill();
+        context.closePath();
+      } else {
+        context.fillRect(
+          obstacle.x,
+          obstacle.y,
+          obstacle.width,
+          obstacle.height
+        );
+      }
+
+      // Draw health
       context.fillStyle = "black";
-      context.font = font;
-      context.fillText(
-        obstacle.health,
-        obstacle.x + obstacle.width - fontS,
-        obstacle.y + obstacle.height - fontS / 3
-      );
+      context.font = `bold ${fontSize}px serif`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      const textX = isRound
+        ? obstacle.x + obstacle.radius
+        : obstacle.x + obstacle.width / 2;
+      const textY = isRound
+        ? obstacle.y + obstacle.radius
+        : obstacle.y + obstacle.height / 2;
+      context.fillText(obstacle.health, textX, textY);
     });
   }, [gameCanvasState]);
 
@@ -115,20 +175,65 @@ const GameCanvas = ({
 
   const collisionDetection = useCallback((ball) => {
     obstaclesRef.current.forEach((obstacle) => {
-      if (
-        ball.x + ball.radius >= obstacle.x &&
-        ball.x - ball.radius <= obstacle.x + obstacle.width &&
-        ball.y + ball.radius >= obstacle.y &&
-        ball.y - ball.radius <= obstacle.y + obstacle.height
-      ) {
-        ball.vx *= -1;
-        ball.vy *= -1;
+      let isColliding = false;
+
+      if (obstacle.shape === "round") {
+        // Circle vs Circle collision
+        const dx = (obstacle.x + obstacle.radius) - ball.x;
+        const dy = (obstacle.y + obstacle.radius) - ball.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        isColliding = distance < ball.radius + obstacle.radius;
+      } else {
+        // Circle vs Rectangle collision
+        const closestX = Math.max(obstacle.x, Math.min(ball.x, obstacle.x + obstacle.width));
+        const closestY = Math.max(obstacle.y, Math.min(ball.y, obstacle.y + obstacle.height));
+        const dx = ball.x - closestX;
+        const dy = ball.y - closestY;
+        isColliding = dx * dx + dy * dy < ball.radius * ball.radius;
+      }
+      if (isColliding) {
+        // Compute ball center
+        const ballCenterX = ball.x;
+        const ballCenterY = ball.y;
+
+        // Compute obstacle center
+        const obstacleCenterX = obstacle.x + obstacle.width / 2;
+        const obstacleCenterY = obstacle.y + obstacle.height / 2;
+
+        // Get distances
+        const dx = ballCenterX - obstacleCenterX;
+        const dy = ballCenterY - obstacleCenterY;
+
+        // Normalize direction
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // Horizontal collision
+          if (dx > 0) {
+            // Hit from the right
+            ball.x = obstacle.x + obstacle.width + ball.radius;
+          } else {
+            // Hit from the left
+            ball.x = obstacle.x - ball.radius;
+          }
+          ball.vx *= -1;
+        } else {
+          // Vertical collision
+          if (dy > 0) {
+            // Hit from bottom
+            ball.y = obstacle.y + obstacle.height + ball.radius;
+          } else {
+            // Hit from top
+            ball.y = obstacle.y - ball.radius;
+          }
+          ball.vy *= -1;
+        }
+
+        // Damage the obstacle
         obstacle.health -= 1;
         if (obstacle.health <= 0) {
-          obstaclesRef.current.splice(
-            obstaclesRef.current.indexOf(obstacle),
-            1
-          );
+          const index = obstaclesRef.current.indexOf(obstacle);
+          if (index !== -1) {
+            obstaclesRef.current.splice(index, 1);
+          }
         }
       }
     });
@@ -185,7 +290,10 @@ const GameCanvas = ({
   }, [bounceInProgressState, drawBalls]); // only things it truly depends on
 
   const initObstacles = useCallback(() => {
-    const newObstacles = generateObstacles(canvasRef.current, DEFAULT_SQUARE_OBST);
+    const newObstacles = generateObstacles(
+      canvasRef.current,
+      DEFAULT_SQUARE_OBST
+    );
     obstaclesRef.current.push(...newObstacles);
   }, []);
 

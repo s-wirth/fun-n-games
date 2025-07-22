@@ -32,8 +32,20 @@ const DEFAULT_SQUARE_OBST = {
   y: null,
   width: SQUARE_DIM,
   height: SQUARE_DIM,
+  shape: "square",
   health: 2,
   color: "red",
 };
 
-export { CANVAS_META, DEFAULT_CANVAS_STATE, DEFAULT_BALL, DEFAULT_SQUARE_OBST };
+const DEFAULT_ROUND_OBST = {
+  x: null,
+  y: null,
+  radius: SQUARE_DIM/1.7,
+  shape: "round",
+  health: 2,
+  color: "orange",
+};
+
+const DEFAULT_OBSTACLES = [DEFAULT_SQUARE_OBST, DEFAULT_ROUND_OBST];
+
+export { CANVAS_META, DEFAULT_CANVAS_STATE, DEFAULT_BALL, DEFAULT_SQUARE_OBST, DEFAULT_ROUND_OBST, DEFAULT_OBSTACLES };
