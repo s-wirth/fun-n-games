@@ -16,7 +16,7 @@ const DEFAULT_BALL = {
   x: CANVAS_META.width / 2,
   y: 20,
   radius: 10,
-  vx: 0,
+  vx: null,
   vy: 5,
   maxVy: 10,
   bounceFactor: 0.5,

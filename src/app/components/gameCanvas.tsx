@@ -13,7 +13,7 @@ const GameCanvas = ({
     canvas: null,
     context: null,
   });
-  const animationFrameRef = useRef();
+  const animationFrameRef = useRef(null);
   const ballsRef = useRef([]);
   const obstaclesRef = useRef([]);
 
@@ -36,11 +36,9 @@ const GameCanvas = ({
   const calculateVelocity = useCallback((ball) => {
     const { x: tx, y: ty } = targetPointState;
     const { x: bx, y: by, vy } = ball;
-    // const vx = (tx - bx) / 10;
-    const dx = tx - bx;
+    const dx = tx - bx; // direction is target - current
     const dy = ty - by;
-    const vx = vy/dy+dx;
-    // console.log('vx', vx)
+    const vx = (vy/dy) * dx;
     ball.vx = vx;
   }, [targetPointState]);
 
@@ -105,7 +103,9 @@ const GameCanvas = ({
     context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
     drawObstacles();
     ballsRef.current.forEach((ball) => {
-      calculateVelocity(ball);
+      if (ball.vx === null) {
+        calculateVelocity(ball);
+      }
       collisionDetection(ball);
       calculateTrajectory(ball);
       drawBall(ball);
