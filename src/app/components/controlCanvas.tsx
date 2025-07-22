@@ -4,7 +4,7 @@ import React, { useRef, useCallback, useEffect, useState } from "react";
 import { CANVAS_META } from "./canvasMeta";
 
 const ControlCanvas = ({
-  props: { angleCoordsState, setAngleCoordsState, setTrajCoordsState, bounceInProgressState, setBounceInProgressState },
+  props: { angleCoordsState, setAngleCoordsState, setTargetPointState, bounceInProgressState, setBounceInProgressState },
 }) => {
   /* -------------- SETUP -------------- */
   const canvasRef = useRef(null);
@@ -150,7 +150,7 @@ const ControlCanvas = ({
       return;
     }
     setUserActiveState(false);
-    setTrajCoordsState(handleCoords(event));
+    setTargetPointState(handleCoords(event));
     setAngleCoordsState({ x: 0, y: 0 });
     setBounceInProgressState(true);
     cancelRaf();

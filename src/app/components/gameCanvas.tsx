@@ -4,8 +4,7 @@ import React, { useRef, useCallback, useEffect, useState } from "react";
 import { CANVAS_META, DEFAULT_BALL, DEFAULT_SQUARE_OBST } from "./canvasMeta";
 
 const GameCanvas = ({
-  // props: { trajCoordsState, bounceInProgressState, setBounceInProgressState },
-  props: { bounceInProgressState, setBounceInProgressState },
+  props: { targetPointState, bounceInProgressState, setBounceInProgressState, endBounceState, setEndBounceState },
 }) => {
   /* -------------- SETUP -------------- */
   const canvasRef = useRef(null);
@@ -14,8 +13,6 @@ const GameCanvas = ({
     canvas: null,
     context: null,
   });
-  const [rafState, setRafState] = useState(null);
-  const [endBounceState, setEndBounceState] = useState(false);
   const animationFrameRef = useRef();
   const ballsRef = useRef([]);
   const obstaclesRef = useRef([]);
@@ -36,6 +33,18 @@ const GameCanvas = ({
   }, [gameCanvasState]);
 
   /* ------------ BALL PHYSICS ------------ */
+  const calculateVelocity = useCallback((ball) => {
+    const { x: tx, y: ty } = targetPointState;
+    const { x: bx, y: by, vy } = ball;
+    // const vx = (tx - bx) / 10;
+    const dx = tx - bx;
+    const dy = ty - by;
+    const vx = vy/dy+dx;
+    // console.log('vx', vx)
+    ball.vx = vx;
+  }, [targetPointState]);
+
+
   const calculateTrajectory = useCallback((ball) => {
     // ball.x cant be smaller than 0 or larger than canvas width
     if (ball.x >= CANVAS_META.width - ball.radius || ball.x <= ball.radius) {
@@ -54,6 +63,7 @@ const GameCanvas = ({
     ball.x += ball.vx;
     ball.y += ball.vy;
   }, []);
+
 
   const collisionDetection = useCallback(
     (ball) => {
@@ -95,29 +105,23 @@ const GameCanvas = ({
     context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
     drawObstacles();
     ballsRef.current.forEach((ball) => {
+      calculateVelocity(ball);
       collisionDetection(ball);
       calculateTrajectory(ball);
       drawBall(ball);
     });
-    console.log("ballsRef", ballsRef);
     animationFrameRef.current = requestAnimationFrame(drawBalls); // loop!
-  }, [
-    gameCanvasState,
-    drawObstacles,
-    collisionDetection,
-    calculateTrajectory,
-    drawBall,
-  ]);
+  }, [gameCanvasState, drawObstacles, collisionDetection, calculateVelocity, calculateTrajectory, drawBall]);
 
   /* -------------- HELPERS -------------- */
   const cancelRaf = useCallback(() => {
     const { context } = gameCanvasState;
-    if (rafState) {
-      context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
-      cancelAnimationFrame(rafState);
-      setRafState(null);
+    if (animationFrameRef.current) {
+      // context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
-  }, [gameCanvasState, rafState]);
+  }, [gameCanvasState]);
 
   const initRaf = useCallback(() => {
     if (bounceInProgressState) {
@@ -149,9 +153,8 @@ const GameCanvas = ({
       cancelRaf();
     }
     return () => cancelRaf(); // cleanup on unmount
-  }, [endBounceState, cancelRaf, setBounceInProgressState]);
+  }, [endBounceState, cancelRaf, setBounceInProgressState, setEndBounceState]);
 
-  // console.log('bounceInProgressState', bounceInProgressState)
   /* -------------- RENDER -------------- */
   return (
     <canvas
