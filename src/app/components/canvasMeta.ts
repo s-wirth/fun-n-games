@@ -25,12 +25,13 @@ const DEFAULT_BALL = {
   weight: 1,
   color: "blue",
 };
+const SQUARE_DIM = 40;
 
 const DEFAULT_SQUARE_OBST = {
-  x: 250,
-  y: CANVAS_META.height - 20,
-  width: 20,
-  height: 20,
+  x: null,
+  y: null,
+  width: SQUARE_DIM,
+  height: SQUARE_DIM,
   health: 2,
   color: "red",
 };
