@@ -115,13 +115,11 @@ const GameCanvas = ({
 
   /* -------------- HELPERS -------------- */
   const cancelRaf = useCallback(() => {
-    const { context } = gameCanvasState;
     if (animationFrameRef.current) {
-      // context.clearRect(0, 0, CANVAS_META.width, CANVAS_META.height);
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
-  }, [gameCanvasState]);
+  }, []);
 
   const initRaf = useCallback(() => {
     if (bounceInProgressState) {
