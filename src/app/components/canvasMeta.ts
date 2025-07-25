@@ -34,7 +34,9 @@ const DEFAULT_SQUARE_OBST = {
   height: SQUARE_DIM,
   shape: "square",
   health: 2,
-  color: "red",
+  color: "green",
+  original_color: "green",
+  hit_color: "red",
 };
 
 const DEFAULT_ROUND_OBST = {
@@ -44,6 +46,8 @@ const DEFAULT_ROUND_OBST = {
   shape: "round",
   health: 2,
   color: "orange",
+  original_color: "orange",
+  hit_color: "red",
 };
 
 const DEFAULT_OBSTACLES = [DEFAULT_SQUARE_OBST, DEFAULT_ROUND_OBST];
