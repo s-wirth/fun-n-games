@@ -11,8 +11,16 @@ import {
 function cloData(data) {
   data.forEach((d) => {
     console.log(d);
-  })
+  });
 }
+function reflectVector(velocity, normal) {
+  const dot = velocity.vx * normal.x + velocity.vy * normal.y;
+  return {
+    vx: velocity.vx - 2 * dot * normal.x,
+    vy: velocity.vy - 2 * dot * normal.y,
+  };
+}
+
 const randomColor = () => {
   const letters = "0123456789ABCDEF";
   let color = "#";
@@ -30,7 +38,6 @@ function randomObstacle() {
   const rO = randomNumber(0, DEFAULT_OBSTACLES.length - 1);
   return { ...DEFAULT_OBSTACLES[rO] };
 }
-
 
 function generateObstacles(canvas) {
   const { columns: canvasColumns, rows: canvasRows } = CANVAS_META;
@@ -116,12 +123,8 @@ const GameCanvas = ({
       context.font = `bold ${fontSize}px serif`;
       context.textAlign = "center";
       context.textBaseline = "middle";
-      const textX = isRound
-        ? obstacle.x
-        : obstacle.x + obstacle.width / 2;
-      const textY = isRound
-        ? obstacle.y
-        : obstacle.y + obstacle.height / 2;
+      const textX = isRound ? obstacle.x : obstacle.x + obstacle.width / 2;
+      const textY = isRound ? obstacle.y : obstacle.y + obstacle.height / 2;
       context.fillText(obstacle.health, textX, textY);
     });
   }, [gameCanvasState]);
@@ -159,59 +162,65 @@ const GameCanvas = ({
   }, []);
 
   const collisionDetection = useCallback((ball) => {
-    const { x: bX, y: bY, radius: bR } = ball;
     obstaclesRef.current.forEach((obstacle) => {
-      switch (obstacle.shape) {
-        case "round":
-          const { x: oRX, y: oRY, radius: oRR } = obstacle;
-          const dist = Math.sqrt((oRX - bX) ** 2 + (oRY - bY) ** 2);
-          if (dist < oRR + bR) {
-            if (ball.vx > 0) {
-              ball.vx *= -1;
-            } else {
-              ball.vx *= 1;
-            }
-            if (ball.vy > 0) {
-              ball.vy *= -1;
-            } else {
-              ball.vy *= 1;
-            }
+      let normal = null;
+      let isColliding = false;
+
+      if (obstacle.shape === "round") {
+        // Circle vs Circle
+        const dx = ball.x - obstacle.x;
+        const dy = ball.y - obstacle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const sumRadii = ball.radius + obstacle.radius;
+
+        if (distance < sumRadii) {
+          isColliding = true;
+          normal = { x: dx / distance, y: dy / distance }; // normalized
+        }
+      } else {
+        // Default to rectangular collision
+        const inX =
+          ball.x + ball.radius >= obstacle.x &&
+          ball.x - ball.radius <= obstacle.x + obstacle.width;
+        const inY =
+          ball.y + ball.radius >= obstacle.y &&
+          ball.y - ball.radius <= obstacle.y + obstacle.height;
+
+        if (inX && inY) {
+          isColliding = true;
+
+          // Compute normal using AABB center method
+          const dx =
+            (ball.x - (obstacle.x + obstacle.width / 2)) / (obstacle.width / 2);
+          const dy =
+            (ball.y - (obstacle.y + obstacle.height / 2)) /
+            (obstacle.height / 2);
+
+          if (Math.abs(dx) > Math.abs(dy)) {
+            normal = { x: dx > 0 ? 1 : -1, y: 0 }; // horizontal
+          } else {
+            normal = { x: 0, y: dy > 0 ? 1 : -1 }; // vertical
           }
-          break;
-        case "square":
-          const { x: oX, y: oY, width: oW, height: oH } = obstacle;
-          const oTop = oY;
-          const oBottom = oY + oH;
-          const oLeft = oX;
-          const oRight = oX + oW;
-          const bTop = ball.y - ball.radius;
-          const bBottom = ball.y + ball.radius;
-          const bLeft = ball.x - ball.radius;
-          const bRight = ball.x + ball.radius;
-          if (
-            bTop < oBottom &&
-            bBottom > oTop &&
-            bLeft < oRight &&
-            bRight > oLeft
-          ) {
-            if (ball.vx > 0) {
-              ball.vx *= -1;
-            } else {
-              ball.vx *= 1;
-            }
-            if (ball.vy > 0) {
-              ball.vy *= -1;
-            } else {
-              ball.vy *= 1;
-            }
-          }
-      
-        default:
-          break;
+        }
+      }
+
+      if (isColliding && normal) {
+        const reflected = reflectVector(ball, normal);
+        ball.vx = reflected.vx;
+        ball.vy = reflected.vy;
+
+        // Damage obstacle
+        obstacle.health -= 1;
+        if (obstacle.health <= 0) {
+          obstaclesRef.current.splice(
+            obstaclesRef.current.indexOf(obstacle),
+            1
+          );
+        }
       }
     });
-    
   }, []);
+
   /* --------------- BALLS --------------- */
   const drawBall = useCallback(
     (ball) => {
