@@ -12,16 +12,17 @@ const DEFAULT_CANVAS_STATE = {
   raf: null,
 };
 
+const PHYSICS_META = {
+  gravity: 0.5,
+  def_shot_vy: 8,
+}
+
 const DEFAULT_BALL = {
   x: CANVAS_META.width / 2,
   y: 20,
-  radius: 10,
+  radius: 8,
   vx: null,
-  vy: 5,
-  maxVy: 10,
-  bounceFactor: 0.5,
-  bounceStartX: 0,
-  bounceStartY: 0,
+  vy: null,
   weight: 1,
   color: "blue",
 };
@@ -52,4 +53,4 @@ const DEFAULT_ROUND_OBST = {
 
 const DEFAULT_OBSTACLES = [DEFAULT_SQUARE_OBST, DEFAULT_ROUND_OBST];
 
-export { CANVAS_META, DEFAULT_CANVAS_STATE, DEFAULT_BALL, DEFAULT_SQUARE_OBST, DEFAULT_ROUND_OBST, DEFAULT_OBSTACLES };
+export { CANVAS_META, DEFAULT_CANVAS_STATE, PHYSICS_META, DEFAULT_BALL, DEFAULT_SQUARE_OBST, DEFAULT_ROUND_OBST, DEFAULT_OBSTACLES };

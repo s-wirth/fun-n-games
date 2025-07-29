@@ -4,7 +4,7 @@ import React, { useRef, useCallback, useEffect, useState } from "react";
 import { CANVAS_META } from "./canvasMeta";
 
 const ControlCanvas = ({
-  props: { angleCoordsState, setAngleCoordsState, setTargetPointState, bounceInProgressState, setBounceInProgressState },
+  props: { angleCoordsState, setAngleCoordsState, setBallTargetPState, bounceInProgressState, setBounceInProgressState },
 }) => {
   /* -------------- SETUP -------------- */
   const canvasRef = useRef(null);
@@ -21,7 +21,7 @@ const ControlCanvas = ({
     (mouseX, mouseY) => {
       const { context } = controlCanvasState;
       const originX = 250; // Starting X
-      const originY = 0; // Starting Y
+      const originY = 20; // Starting Y
 
       // Direction vector from origin to mouse
       const dx = mouseX - originX;
@@ -150,7 +150,7 @@ const ControlCanvas = ({
       return;
     }
     setUserActiveState(false);
-    setTargetPointState(handleCoords(event));
+    setBallTargetPState(handleCoords(event));
     setAngleCoordsState({ x: 0, y: 0 });
     setBounceInProgressState(true);
     cancelRaf();
