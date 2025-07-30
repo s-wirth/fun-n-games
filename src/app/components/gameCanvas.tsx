@@ -140,7 +140,6 @@ const GameCanvas = ({
       const dy = ty - by;
       const vx = (vy / dy) * dx;
       ball.vx = vx;
-
       ball.vy = vy;
     },
     [ballTargetPState]
@@ -157,10 +156,18 @@ const GameCanvas = ({
       console.log("ball outside height, reversing vy");
       ball.vy *= -1;
     }
+    if (ball.vy < 0) {
+      ball.vy += PHYSICS_META.energy_loss;
+    }
+    if (ball.vy > 0 && ball.vy < PHYSICS_META.def_shot_vy) {
+      ball.vy += .7;
+    }
+    console.log('ball.vy', ball.vy)
     if (ball.y >= CANVAS_META.height - ball.radius) {
       setEndBounceState(true);
       return;
     }
+    
     ball.x += ball.vx;
     ball.y += ball.vy;
   }, [setEndBounceState]);
@@ -210,6 +217,7 @@ const GameCanvas = ({
 
       if (isColliding && normal) {
         const reflected = reflectVector(ball, normal);
+        
         ball.vx = reflected.vx;
         ball.vy = reflected.vy;
 

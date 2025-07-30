@@ -13,7 +13,7 @@ const DEFAULT_CANVAS_STATE = {
 };
 
 const PHYSICS_META = {
-  gravity: 0.5,
+  energy_loss: 0.5,
   def_shot_vy: 8,
 }
 
